@@ -3,3 +3,4 @@ tensorflow
 pillow 
 Flask-Cors
 mysql-connector-python
+pytz
