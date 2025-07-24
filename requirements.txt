@@ -1,9 +1,6 @@
-Flask
-gunicorn
-Pillow
-numpy
-scikit-learn
-xgboost
-pickle-mixin
-torch --index-url https://download.pytorch.org/whl/cpu
-transformers
+flask
+tensorflow
+pillow 
+Flask-Cors
+mysql-connector-python
+pytz
