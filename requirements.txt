@@ -1,7 +1,10 @@
 flask
 gunicorn
 tensorflow
-pillow 
+Pillow
 Flask-Cors
 mysql-connector-python
 pytz
+xgboost
+transformers
+torch
