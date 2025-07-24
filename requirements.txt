@@ -1,4 +1,9 @@
 Flask
 gunicorn
-mysql-connector-python
-requests
+Pillow
+numpy
+scikit-learn
+xgboost
+pickle-mixin
+torch --index-url https://download.pytorch.org/whl/cpu
+transformers
