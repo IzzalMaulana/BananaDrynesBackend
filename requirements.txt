@@ -4,3 +4,7 @@ pillow
 Flask-Cors
 mysql-connector-python
 pytz
+xgboost
+transformers
+torch
+gunicorn
