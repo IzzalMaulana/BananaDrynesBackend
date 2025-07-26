@@ -11,7 +11,8 @@ from datetime import datetime
 import pytz
 
 app = Flask(__name__)
-CORS(app, origins=['http://localhost:3000'])  # Sesuaikan dengan port frontend Anda
+# <-- DIUBAH: Mengizinkan akses dari alamat IP publik Anda atau semua alamat (*)
+CORS(app, origins=['http://139.59.227.44', '*']) 
 
 # Konstanta minimal confidence untuk validasi gambar pisang
 MIN_CONFIDENCE = 76.0 
@@ -48,13 +49,11 @@ except Exception as e:
     print(f"Error loading ViT model: {e}")
     vit_available = False
 
-# Konfigurasi koneksi MySQL
-# Ganti sesuai kebutuhan, di sini user: root, password: kosong, database: banana_db
-
+# <-- DIUBAH: Konfigurasi koneksi MySQL dengan user dan password yang benar
 db_config = {
     'host': 'localhost',
-    'user': 'root',
-    'password': '',
+    'user': 'banana_user',
+    'password': 'abcd123', # <-- GANTI DENGAN PASSWORD ANDA
     'database': 'banana_db'
 }
 
@@ -62,7 +61,6 @@ def get_db_connection():
     return mysql.connector.connect(**db_config)
 
 def preprocess_image(image_bytes):
-    """Preprocess gambar untuk diubah menjadi fitur oleh ViT"""
     try:
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         inputs = extractor(images=image, return_tensors="pt").to(device)
@@ -75,7 +73,6 @@ def preprocess_image(image_bytes):
         raise e
 
 def get_prediction_confidence(features):
-    """Hitung confidence score dari prediksi"""
     try:
         if hasattr(model, 'predict_proba'):
             probabilities = model.predict_proba(features)
@@ -87,8 +84,13 @@ def get_prediction_confidence(features):
         return 95.0
 
 UPLOAD_FOLDER = 'uploads'
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+# <-- DIUBAH: Menggunakan cara yang aman untuk membuat folder
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# <-- DITAMBAHKAN: Rute untuk halaman utama agar tidak 404 Not Found
+@app.route('/')
+def index():
+    return "<h1>Backend BananaDrynes Aktif!</h1>"
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -104,35 +106,28 @@ def predict():
         if image_file.filename == '':
             return jsonify({'error': 'No image selected'}), 400
 
-        # Simpan file ke folder uploads
         save_path = os.path.join(UPLOAD_FOLDER, image_file.filename)
         image_file.save(save_path)
-
         img_bytes = open(save_path, 'rb').read()
-        print(f"Image file size: {len(img_bytes)} bytes")
 
         features = preprocess_image(img_bytes)
-        print(f"Features shape: {features.shape}")
-
         confidence = get_prediction_confidence(features)
-        print(f"Confidence score: {confidence:.2f}%")
 
         if confidence < MIN_CONFIDENCE:
             result = {
                 'classification': 'Gambar Bukan Pisang',
                 'accuracy': round(confidence, 1),
                 'drynessLevel': -1,
-                'is_banana': False,
                 'filename': image_file.filename
             }
-            print(f"Result: {result}")
             # Simpan ke history
             try:
                 conn = get_db_connection()
                 cursor = conn.cursor()
+                # <-- DIUBAH: Menghapus is_banana dari query INSERT
                 cursor.execute(
-                    "INSERT INTO history (filename, classification, accuracy, drynessLevel, is_banana) VALUES (%s, %s, %s, %s, %s)",
-                    (image_file.filename, result['classification'], result['accuracy'], result['drynessLevel'], result['is_banana'])
+                    "INSERT INTO history (filename, classification, accuracy, drynessLevel) VALUES (%s, %s, %s, %s)",
+                    (image_file.filename, result['classification'], result['accuracy'], result['drynessLevel'])
                 )
                 conn.commit()
                 cursor.close()
@@ -143,8 +138,6 @@ def predict():
 
         pred = model.predict(features)
         pred_class = int(pred[0])
-        print(f"Prediction: {pred_class}")
-
         label_map = {0: "Basah", 1: "Sedang", 2: "Kering"}
         classification = label_map.get(pred_class, "Unknown")
 
@@ -152,17 +145,16 @@ def predict():
             'classification': classification,
             'accuracy': round(confidence, 1),
             'drynessLevel': pred_class,
-            'is_banana': True,
             'filename': image_file.filename
         }
-        print(f"Result: {result}")
         # Simpan ke history
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
+            # <-- DIUBAH: Menghapus is_banana dari query INSERT
             cursor.execute(
-                "INSERT INTO history (filename, classification, accuracy, drynessLevel, is_banana) VALUES (%s, %s, %s, %s, %s)",
-                (image_file.filename, result['classification'], result['accuracy'], result['drynessLevel'], result['is_banana'])
+                "INSERT INTO history (filename, classification, accuracy, drynessLevel) VALUES (%s, %s, %s, %s)",
+                (image_file.filename, result['classification'], result['accuracy'], result['drynessLevel'])
             )
             conn.commit()
             cursor.close()
@@ -194,14 +186,10 @@ def get_history():
         cursor.close()
         conn.close()
 
-        # Format waktu ke Asia/Jakarta sebelum dikirim ke frontend
         jakarta = pytz.timezone('Asia/Jakarta')
         for row in rows:
             if isinstance(row['created_at'], datetime):
                 row['created_at'] = row['created_at'].astimezone(jakarta).strftime('%Y-%m-%d %H:%M:%S')
-            elif isinstance(row['created_at'], str):
-                # Sudah string, biarkan saja
-                pass
         return jsonify(rows)
     except Exception as e:
         print(f"Error fetching history: {e}")
@@ -212,9 +200,4 @@ def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
 if __name__ == '__main__':
-    print("Starting Flask server...")
-    print(f"Model status: {'Loaded' if model else 'Not loaded'}")
-    print(f"ViT status: {'Available' if vit_available else 'Not available'}")
     app.run()
-
-
