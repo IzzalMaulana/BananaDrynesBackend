@@ -1,0 +1,26 @@
+[Unit]
+Description=BananaDrynes Backend
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/path/to/your/BananaDrynesBackend
+Environment=PATH=/path/to/your/BananaDrynesBackend/venv/bin
+ExecStart=/path/to/your/BananaDrynesBackend/venv/bin/gunicorn --config gunicorn.conf.py main:app
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Memory limits
+MemoryMax=3G
+MemoryHigh=2.5G
+
+# Timeout settings
+TimeoutStartSec=300
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target 
