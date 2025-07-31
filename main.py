@@ -11,7 +11,7 @@ from datetime import datetime
 import pytz
 
 app = Flask(__name__)
-CORS(app, origins=['http://139.59.227.44', 'http://bananadrynes.my.id', 'http://www.bananadrynes.my.id', '*']) 
+CORS(app, origins=['http://bananadrynes.my.id', 'http://www.bananadrynes.my.id', '*'], methods=['GET', 'POST', 'DELETE', 'OPTIONS']) 
 
 # Konstanta
 MIN_CONFIDENCE = 76.0 
@@ -69,6 +69,16 @@ def preprocess_image(image_bytes):
 @app.route('/')
 def index():
     return "<h1>Backend BananaDrynes Aktif!</h1>"
+
+@app.route('/test-delete/<int:history_id>', methods=['DELETE'])
+def test_delete(history_id):
+    """Test endpoint untuk debugging delete operation"""
+    print(f"Test DELETE request received for history ID: {history_id}")
+    return jsonify({
+        'message': 'Test DELETE endpoint working',
+        'history_id': history_id,
+        'method': 'DELETE'
+    }), 200
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -156,9 +166,11 @@ def get_history():
 
 @app.route('/history/<int:history_id>', methods=['DELETE'])
 def delete_history(history_id):
+    print(f"DELETE request received for history ID: {history_id}")
     try:
         conn = get_db_connection()
         if not conn:
+            print("Database connection failed")
             return jsonify({'error': 'Database connection failed'}), 500
         
         cursor = conn.cursor()
@@ -168,20 +180,24 @@ def delete_history(history_id):
         result = cursor.fetchone()
         
         if not result:
+            print(f"History record with ID {history_id} not found")
             cursor.close()
             conn.close()
             return jsonify({'error': 'History record not found'}), 404
         
         filename = result[0]
+        print(f"Found filename: {filename}")
         
         # Delete from database
         cursor.execute("DELETE FROM history WHERE id = %s", (history_id,))
         
         if cursor.rowcount == 0:
+            print(f"No rows affected when deleting ID {history_id}")
             cursor.close()
             conn.close()
             return jsonify({'error': 'Failed to delete history record'}), 500
         
+        print(f"Successfully deleted {cursor.rowcount} record(s) from database")
         conn.commit()
         cursor.close()
         conn.close()
@@ -192,13 +208,17 @@ def delete_history(history_id):
             if os.path.exists(file_path):
                 os.remove(file_path)
                 print(f"Deleted file: {filename}")
+            else:
+                print(f"File not found: {file_path}")
         except Exception as file_err:
             print(f"Warning: Could not delete file {filename}: {file_err}")
         
+        print(f"DELETE operation completed successfully for ID: {history_id}")
         return jsonify({'message': 'History deleted successfully'}), 200
         
     except Exception as e:
         print(f"Error deleting history: {e}")
+        print(traceback.format_exc())
         return jsonify({'error': 'Failed to delete history'}), 500
 
 @app.route('/history/clear', methods=['DELETE'])
