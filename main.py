@@ -55,7 +55,7 @@ except Exception as e:
 db_config = {
     'host': 'localhost',
     'user': 'banana_user',
-    'password': 'PasswordDatabaseAnda', # <-- PASTIKAN INI BENAR
+    'password': 'abc123', # <-- PASTIKAN INI BENAR
     'database': 'banana_db'
 }
 
