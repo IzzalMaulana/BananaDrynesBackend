@@ -221,47 +221,6 @@ def delete_history(history_id):
         print(traceback.format_exc())
         return jsonify({'error': 'Failed to delete history'}), 500
 
-@app.route('/history/clear', methods=['DELETE'])
-def clear_all_history():
-    try:
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'error': 'Database connection failed'}), 500
-        
-        cursor = conn.cursor()
-        
-        # Get all filenames before deleting
-        cursor.execute("SELECT filename FROM history")
-        filenames = cursor.fetchall()
-        
-        # Delete all records
-        cursor.execute("DELETE FROM history")
-        deleted_count = cursor.rowcount
-        
-        conn.commit()
-        cursor.close()
-        conn.close()
-        
-        # Try to delete all uploaded files
-        deleted_files = 0
-        for (filename,) in filenames:
-            try:
-                file_path = os.path.join(UPLOAD_FOLDER, filename)
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-                    deleted_files += 1
-            except Exception as file_err:
-                print(f"Warning: Could not delete file {filename}: {file_err}")
-        
-        return jsonify({
-            'message': f'All history cleared successfully',
-            'deleted_records': deleted_count,
-            'deleted_files': deleted_files
-        }), 200
-        
-    except Exception as e:
-        print(f"Error clearing history: {e}")
-        return jsonify({'error': 'Failed to clear history'}), 500
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
